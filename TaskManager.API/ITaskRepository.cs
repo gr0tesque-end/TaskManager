@@ -1,4 +1,4 @@
-﻿using TaskManager.API.Models;
+﻿using CommonTypes;
 
 namespace TaskManager.API;
 

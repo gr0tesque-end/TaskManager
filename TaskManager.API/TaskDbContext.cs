@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TaskManager.API.Models;
+﻿using CommonTypes;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace TaskManager.API;
 

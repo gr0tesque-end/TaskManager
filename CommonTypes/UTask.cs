@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace TaskManager.API.Models;
+namespace CommonTypes;
 
 public class UTask
 {

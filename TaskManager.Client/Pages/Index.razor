@@ -1,0 +1,101 @@
+﻿@page "/"
+@using MudBlazor
+@using CommonTypes
+@using TaskManager.Client.Services
+@inject TaskService TaskService
+@inject ISnackbar Snackbar
+
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudDialogProvider />
+<MudPopoverProvider />
+<MudSnackbarProvider />
+
+
+<MudContainer>
+	<MudPaper Elevation="3" Class="pa-4">
+		<MudText Typo="Typo.h4" Class="mb-4">Task Manager</MudText>
+
+		<!-- Add Task Form -->
+		<MudCard>
+			<MudCardContent>
+				<MudTextField @bind-Value="newTask.Title" Label="Title" Required />
+				<MudTextField @bind-Value="newTask.Description" Label="Description" Lines="3" />
+				<MudDatePicker Date="@newTask.DueDate"
+							   DateChanged="@(async (d) => await OnDueDateChanged(d))"
+							   Label="Due Date" />
+				<MudButton Variant="Variant.Filled" Color="Color.Primary"
+				OnClick="AddTask" Class="mt-3">Add Task</MudButton>
+			</MudCardContent>
+		</MudCard>
+
+		<!-- Task List -->
+		<MudTable Items="@tasks" Hover="true" Class="mt-4">
+			<HeaderContent>
+				<MudTh>Title</MudTh>
+				<MudTh>Due Date</MudTh>
+				<MudTh>Status</MudTh>
+				<MudTh>Actions</MudTh>
+			</HeaderContent>
+			<RowTemplate>
+				<MudTd>@context.Title</MudTd>
+				<MudTd>@context.DueDate.ToShortDateString()</MudTd>
+				<MudTd>
+					<MudCheckBox T="bool"
+					@bind-Checked="@context.IsCompleted" 
+					ValueChanged="@(async (isChecked) => await OnCheckChanged(context, isChecked))" />
+				</MudTd>
+				<MudTd>
+					<MudIconButton Icon="@Icons.Material.Filled.Delete"
+					Color="Color.Error"
+					OnClick="@(() => DeleteTaskAsync(context.Id))" />
+				</MudTd>
+			</RowTemplate>
+		</MudTable>
+	</MudPaper>
+</MudContainer>
+
+@code {
+	private List<UTask> tasks = new();
+	private UTask newTask = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		tasks = await TaskService.GetTasksAsync();
+	}
+
+	private async Task AddTask()
+	{
+		await TaskService.CreateTaskAsync(newTask);
+		Snackbar.Add("Task added!", Severity.Success);
+		newTask = new(); tasks = await TaskService.GetTasksAsync();
+	}
+
+	private async Task UpdateTaskAsync(UTask task)
+	{
+		await TaskService.UpdateTaskAsync(task);
+		Snackbar.Add("Task updated!", Severity.Info);
+	}
+
+	private async Task DeleteTaskAsync(int id)
+	{
+		await TaskService.DeleteTaskAsync(id);
+		Snackbar.Add("Task deleted!", Severity.Error);
+		tasks = await TaskService.GetTasksAsync();
+	}
+
+	private async Task OnCheckChanged(UTask task, bool? isChecked)
+	{
+		await UpdateTaskAsync(task);
+		Snackbar.Add("Status updated", Severity.Info);
+	}
+
+	private async Task OnDueDateChanged(DateTime? newDate)
+	{
+		if (newDate.HasValue)
+		{
+			newTask.DueDate = newDate.Value;
+		}
+	}
+}
