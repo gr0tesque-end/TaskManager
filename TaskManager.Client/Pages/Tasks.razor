@@ -1,0 +1,150 @@
+﻿@page "/tasks"
+@page "/"
+@attribute [Authorize]
+@
+@inject TaskService TaskService
+@inject ISnackbar Snackbar
+
+<MudPaper Elevation="3" Class="pa-4">
+    <MudText Typo="Typo.h4" Class="mb-4">My Tasks</MudText>
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+    }
+    else
+    {
+        <MudTable Items="@tasks" Hover="true" Dense="true">
+            <ToolBarContent>
+                <MudTextField Immediate="true" @bind-Value="searchString" 
+                             Placeholder="Search..." Adornment="Adornment.Start" 
+                             AdornmentIcon="@Icons.Material.Filled.Search"/>
+                <MudSpacer/>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                          StartIcon="@Icons.Material.Filled.Add" 
+                          OnClick="OpenAddDialog">New Task</MudButton>
+            </ToolBarContent>
+            
+            <HeaderContent>
+                <MudTh>Title</MudTh>
+                <MudTh>Due Date</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            
+            <RowTemplate>
+                <MudTd>@context.Title</MudTd>
+                <MudTd>@context.DueDate.ToShortDateString()</MudTd>
+                <MudTd>
+                    <MudCheckbox @bind-Checked="@context.IsCompleted" 
+                                OnCheckedChanged="async _ => await UpdateTask(context)"/>
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                  OnClick="() => OpenEditDialog(context)"/>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                  Color="Color.Error" 
+                                  OnClick="async () => await DeleteTask(context.Id)"/>
+                </MudTd>
+            </RowTemplate>
+            
+            <PagerContent>
+                <MudTablePager PageSizeOptions="@(new[] { 5, 10, 25 })"/>
+            </PagerContent>
+        </MudTable>
+    }
+</MudPaper>
+
+<MudDialog @bind-IsVisible="isAddDialogOpen">
+    <DialogContent>
+        <MudTextField @bind-Value="newTask.Title" Label="Title" Required/>
+        <MudTextField @bind-Value="newTask.Description" Label="Description" Lines="3"/>
+        <MudDatePicker @bind-Date="newTask.DueDate" Label="Due Date"/>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseAddDialog">Cancel</MudButton>
+        <MudButton OnClick="AddTask" Color="Color.Primary">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<Task> tasks = new();
+    private bool isLoading = true;
+    private string searchString = "";
+    private bool isAddDialogOpen;
+    private Task newTask = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTasks();
+    }
+
+    private async Task LoadTasks()
+    {
+        isLoading = true;
+        try
+        {
+            tasks = await TaskService.GetTasksAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            Snackbar.Add($"Error loading tasks: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenAddDialog() => isAddDialogOpen = true;
+    private void CloseAddDialog() => isAddDialogOpen = false;
+
+    private async Task AddTask()
+    {
+        try
+        {
+            await TaskService.CreateTaskAsync(newTask);
+            Snackbar.Add("Task created!", Severity.Success);
+            await LoadTasks();
+            newTask = new Task();
+            CloseAddDialog();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating task: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UpdateTask(Task task)
+    {
+        try
+        {
+            await TaskService.UpdateTaskAsync(task);
+            Snackbar.Add("Task updated!", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating task: {ex.Message}", Severity.Error);
+            await LoadTasks(); // Revert changes
+        }
+    }
+
+    private async Task DeleteTask(int id)
+    {
+        if (await TaskService.DeleteTaskAsync(id))
+        {
+            Snackbar.Add("Task deleted!", Severity.Success);
+            await LoadTasks();
+        }
+    }
+
+    public class Task
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public DateTime DueDate { get; set; } = DateTime.Now;
+        public bool IsCompleted { get; set; }
+    }
+}

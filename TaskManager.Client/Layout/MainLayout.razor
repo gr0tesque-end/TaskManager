@@ -1,12 +1,27 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
 
-        <article class="content px-4">
+<MudThemeProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<MudLayout>
+    <MudAppBar Elevation="4">
+        <MudIconButton Icon="@Icons.Material.Menu" Color="Color.Inherit" Edge="Edge.Start"/>
+        <MudText Typo="Typo.h6">Task Manager</MudText>
+        <MudSpacer/>
+        <LoginDisplay/>
+    </MudAppBar>
+
+    <MudMainContent>
+        <MudContainer Class="mt-4">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.GetAuthState(); // Initialize auth state
+    }
+}

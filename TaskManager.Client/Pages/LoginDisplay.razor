@@ -1,0 +1,20 @@
+﻿@inject AuthService AuthService
+@inject NavigationManager Nav
+
+<AuthorizeView>
+    <Authorized>
+        <MudButton Variant="Variant.Text" Color="Color.Inherit" 
+                  OnClick="Logout">Logout</MudButton>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton Href="/login" Variant="Variant.Text" Color="Color.Inherit">Login</MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private async Task Logout()
+    {
+        await AuthService.Logout();
+        Nav.NavigateTo("/");
+    }
+}

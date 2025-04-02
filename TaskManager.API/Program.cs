@@ -1,11 +1,17 @@
-﻿using CommonTypes;
+﻿using System.Text;
+using CommonTypes;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using TaskManager.API;
+using TaskManager.API.Interfaces;
+using TaskManager.API.Repositories;
+using TaskManager.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,15 +23,38 @@ builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddCors(options =>
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ILocalStorageService, ServerStorageService>();
+builder.Services.AddSession();
+
+builder.Services.AddAuthorization(options =>
 {
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins("https://localhost:7191")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
+    options.AddPolicy("TeamOwner", policy =>
+        policy.RequireAssertion(context =>
+            context.User.HasClaim(c =>
+                c.Type == "TeamOwner" && c.Value == "true")));
 });
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<UserService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new()
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -37,9 +66,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 // Minimal API endpoints
 app.MapGet("/tasks", async (ITaskRepository repo) =>
-    await repo.GetAllAsync());
+    await repo.GetAllAsync()).RequireAuthorization();
 
 app.MapGet("/tasks/{id}", async (int id, ITaskRepository repo) =>
     await repo.GetByIdAsync(id) is UTask task ? Results.Ok(task) : Results.NotFound());
@@ -65,7 +99,5 @@ app.MapDelete("/tasks/{id}", async (int id, ITaskRepository repo) =>
         ? Results.NoContent()
         : Results.NotFound();
 });
-
-app.UseCors();
 
 app.Run("https://localhost:5000");

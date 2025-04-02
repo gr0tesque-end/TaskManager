@@ -9,4 +9,5 @@ public interface ITaskRepository
     Task<UTask> CreateAsync(UTask task);
     Task<bool> UpdateAsync(UTask task);
     Task<bool> DeleteAsync(int id);
+    Task<List<UTask>> GetUserTasksAsync(int userId);
 }

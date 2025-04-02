@@ -1,7 +1,7 @@
 ﻿using CommonTypes;
 using Microsoft.EntityFrameworkCore;
 
-namespace TaskManager.API;
+namespace TaskManager.API.Repositories;
 
 public class TaskRepository : ITaskRepository
 {
@@ -35,5 +35,19 @@ public class TaskRepository : ITaskRepository
 
         _context.Tasks.Remove(task);
         return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<List<UTask>> GetUserTasksAsync(int userId)
+    {
+        return await _context.Tasks
+            .Where(t => t.UserId == userId ||
+                       (t.TeamId != null && t.Team.Members.Any(m => m.UserId == userId)))
+            .ToListAsync();
+    }
+
+    public async Task<UTask?> GetUserTaskAsync(int taskId, int userId)
+    {
+        return await _context.Tasks
+            .FirstOrDefaultAsync(t => t.Id == taskId && t.UserId == userId);
     }
 }
